@@ -3,7 +3,7 @@ name: Build BELMAL APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -16,14 +16,18 @@ jobs:
       - name: Siapkan proyek BELMAL
         run: |
           unzip -o BELMAL_ANDROID_APP.zip -d belmal
+
           mkdir -p android/app/src/main/assets
+          mkdir -p android/app/src/main/java/com/belmal/app
+          mkdir -p android/app/src/main/res/values
+
           cp belmal/index.html android/app/src/main/assets/
           cp belmal/style.css android/app/src/main/assets/
           cp belmal/app.js android/app/src/main/assets/
           cp belmal/manifest.webmanifest android/app/src/main/assets/ || true
           cp belmal/sw.js android/app/src/main/assets/ || true
 
-          cat > settings.gradle <<'EOF'
+          cat > android/settings.gradle <<'EOF'
           pluginManagement {
               repositories {
                   google()
@@ -31,6 +35,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
+
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
@@ -38,34 +43,14 @@ jobs:
                   mavenCentral()
               }
           }
+
           rootProject.name = "BELMAL"
-          include ":app"
+          include(":app")
           EOF
-
-          cat > build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application' version '8.6.1' apply false
-          }
-          EOF
-
-          mkdir -p android/app/src/main/java/com/belmal/app
 
           cat > android/build.gradle <<'EOF'
           plugins {
-              id 'com.android.application'
-          }
-
-          android {
-              namespace 'com.belmal.app'
-              compileSdk 35
-
-              defaultConfig {
-                  applicationId 'com.belmal.app'
-                  minSdk 23
-                  targetSdk 35
-                  versionCode 1
-                  versionName '1.0'
-              }
+              id 'com.android.application' version '8.6.1' apply false
           }
           EOF
 
@@ -90,6 +75,7 @@ jobs:
 
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
               <uses-permission android:name="android.permission.INTERNET"/>
 
               <application
@@ -108,11 +94,10 @@ jobs:
                       </intent-filter>
 
                   </activity>
+
               </application>
           </manifest>
           EOF
-
-          mkdir -p android/app/src/main/res/values
 
           cat > android/app/src/main/res/values/styles.xml <<'EOF'
           <resources>
@@ -136,6 +121,7 @@ jobs:
           import android.webkit.WebViewClient;
 
           public class MainActivity extends Activity {
+
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -149,12 +135,25 @@ jobs:
                   settings.setAllowFileAccess(true);
 
                   webView.loadUrl("file:///android_asset/index.html");
+
                   setContentView(webView);
               }
           }
           EOF
 
+      - name: Buat Gradle Wrapper
+        working-directory: android
+        run: |
+          gradle wrapper --gradle-version 8.7
+
       - name: Build APK
         working-directory: android
         run: |
-          gradle wrapper
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK BELMAL
+        uses: actions/upload-artifact@v4
+        with:
+          name: BELMAL-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
