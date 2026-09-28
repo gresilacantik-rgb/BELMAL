@@ -15,7 +15,7 @@ jobs:
 
       - name: Siapkan proyek BELMAL
         run: |
-          unzip -o BELMAL_ANDROID_APP.zip -d belmal
+    
 
           mkdir -p android/app/src/main/assets
           mkdir -p android/app/src/main/java/com/belmal/app
